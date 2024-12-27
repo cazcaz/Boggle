@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+#[derive(Deserialize, Serialize, Clone)]
 struct DictTrieNode {
     children: HashMap<char, DictTrieNode>,
     end: bool,
@@ -14,18 +16,19 @@ impl DictTrieNode {
     }
 }
 
+#[derive(Deserialize, Serialize, Clone)]
 pub struct DictTrie {
     root: DictTrieNode,
 }
 
 impl DictTrie {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             root: DictTrieNode::new('0'),
         }
     }
 
-    fn insert_word(&mut self, word: &String) {
+    pub fn insert_word(&mut self, word: &String) {
         let mut current_node = &mut self.root;
         for c in word.chars() {
             current_node = current_node
@@ -36,7 +39,7 @@ impl DictTrie {
         current_node.end = true;
     }
 
-    fn check_word(&self, word: &String) -> bool {
+    pub fn check_word(&self, word: &String) -> bool {
         let mut current_node = &self.root;
         for c in word.chars() {
             match current_node.children.get(&c) {
@@ -47,7 +50,7 @@ impl DictTrie {
         current_node.end
     }
 
-    fn extend_word(&self, word: &String) -> Vec<String> {
+    pub fn extend_word(&self, word: &String) -> Vec<String> {
         let mut results = Vec::new();
         let mut current_node = &self.root;
 
