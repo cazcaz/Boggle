@@ -1,8 +1,8 @@
 use std::io::{self, Write};
 
-mod DictTrie;
+pub mod DictTrie;
 
-mod TrieManager;
+pub mod TrieManager;
 
 pub fn trie_CLI() {
     let mut trie = match TrieManager::load_trie() {
