@@ -1,8 +1,5 @@
-use boggle::Dice;
+use boggle::Game;
 fn main() {
-    let mut board = Dice::new();
-    println!("{}", board);
-    board.find_all_words();
-    let word_set = board.get_possible_words();
-    println!("{:?}", word_set);
+    let mut game = Game::new();
+    game.start();
 }
