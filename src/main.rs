@@ -1,2 +1,4 @@
 use boggle::utils;
-fn main() {}
+fn main() {
+    utils::trie_CLI();
+}
