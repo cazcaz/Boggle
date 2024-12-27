@@ -138,8 +138,7 @@ impl Game {
         }
     }
     pub fn start(&mut self) {
-        println!("{}", self.boggle);
-        println!("Game started! Enter as many words as you can in 90 seconds.");
+        self.print_welcome_message();
         let start_time = Instant::now();
         let stdin = io::stdin();
         let mut input = String::new();
@@ -147,44 +146,58 @@ impl Game {
             input.clear();
             stdin.read_line(&mut input).expect("Failed to read line");
             let word = input.trim().to_uppercase();
-            if self.boggle.get_possible_words().contains(&word) {
-                if self.found_words.contains(&word) {
-                    println!("You have already found this word. Try Again!");
-                } else {
-                    self.found_words.insert(word);
-                }
-            } else {
-                println!("Not a valid word. Try again!");
-            }
+            self.process_word(&word);
         }
-        println!();
-        println!("Final scores:");
-        println!();
+        self.print_final_scores();
+    }
+
+    fn print_welcome_message(&self) {
+        println!("{}", self.boggle);
+        println!("Game started! Enter as many words as you can in 90 seconds.");
+    }
+
+    fn process_word(&mut self, word: &str) {
+        if self.boggle.get_possible_words().contains(word) {
+            if self.found_words.contains(word) {
+                println!("You have already found this word. Try again!");
+            } else {
+                self.found_words.insert(word.to_string());
+            }
+        } else {
+            println!("Not a valid word. Try again!");
+        }
+    }
+
+    fn print_final_scores(&self) {
+        println!("\nFinal scores:\n");
         println!(
             "You found {} of a total {} possible words",
             self.found_words.len(),
             self.boggle.get_possible_words().len()
         );
+        self.print_found_words();
+        self.print_possible_words();
+    }
 
+    fn print_found_words(&self) {
         let mut found_word_vec: Vec<&String> = self.found_words.iter().collect();
-        let mut score = 0;
-        let mut max_score = 0;
         found_word_vec.sort_by(|a, b| b.len().cmp(&a.len()));
+        let mut score = 0;
         for word in found_word_vec {
             score += word.len() - 2;
             println!("{} {}", word, word.len() - 2);
         }
+        println!("\nYour final score: {}", score);
+    }
+
+    fn print_possible_words(&self) {
         let mut possible_word_vec: Vec<&String> = self
             .boggle
             .possible_words
             .difference(&self.found_words)
             .collect();
         possible_word_vec.sort_by(|a, b| b.len().cmp(&a.len()));
-        for word in &possible_word_vec {
-            max_score += word.len() - 2;
-        }
-        println!("");
-        println!("You could have found some of these words: ");
+        println!("\nYou could have found some of these words: ");
         for i in 0..15 {
             if i >= possible_word_vec.len() {
                 continue;
@@ -195,8 +208,7 @@ impl Game {
                 possible_word_vec[i].len() - 2
             );
         }
-
-        println!("");
-        println!("Your final score: {} of {}", score, max_score);
+        let max_score: usize = possible_word_vec.iter().map(|word| word.len() - 2).sum();
+        println!("\nYour potential max score: {}", max_score);
     }
 }
