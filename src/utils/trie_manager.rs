@@ -1,4 +1,4 @@
-use super::DictTrie::DictTrie;
+use super::dict_trie::DictTrie;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs;
@@ -6,27 +6,26 @@ use std::io::{self, Write};
 use std::path::Path;
 
 const TRIE_FILE: &str = "english_trie.bin";
-const JSON_FILE: &str = "dictionary.json";
 
 #[derive(Serialize, Deserialize)]
 struct SerializableTrie {
     trie: DictTrie,
 }
 
-pub fn load_trie() -> Result<DictTrie, io::Error> {
+pub fn load_trie(dictionary_path: String) -> Result<DictTrie, io::Error> {
     if Path::new(TRIE_FILE).exists() {
         let data = fs::read(TRIE_FILE)?;
         let serializable_trie: SerializableTrie = bincode::deserialize(&data)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(serializable_trie.trie)
     } else {
-        let trie = create_and_serialize_trie()?;
+        let trie = create_and_serialize_trie(dictionary_path)?;
         Ok(trie)
     }
 }
 
-fn create_and_serialize_trie() -> Result<DictTrie, io::Error> {
-    let words: Vec<String> = load_words_from_json(JSON_FILE)?;
+fn create_and_serialize_trie(dictionary_path: String) -> Result<DictTrie, io::Error> {
+    let words: Vec<String> = load_words_from_json(&dictionary_path)?;
 
     let mut trie = DictTrie::new();
     for word in words {

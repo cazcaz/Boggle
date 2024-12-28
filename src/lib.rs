@@ -10,15 +10,17 @@ pub mod utils;
 pub struct Boggle {
     array: Vec<Vec<char>>,
     possible_words: HashSet<String>,
+    board_size: i32,
+    dictionary_path: String,
 }
 
 impl Boggle {
-    pub fn new() -> Self {
+    pub fn new(board_size: i32, dictionary_path: String) -> Self {
         let mut dice = vec![];
         let mut rand = rand::thread_rng();
-        for _ in 0..4 {
+        for _ in 0..board_size {
             let mut cur: Vec<char> = vec![];
-            for _ in 0..4 {
+            for _ in 0..board_size {
                 let rand_letter: char = rand.gen_range(b'A'..b'Z') as char;
                 cur.push(rand_letter);
             }
@@ -27,6 +29,8 @@ impl Boggle {
         let mut boggle = Self {
             array: dice,
             possible_words: HashSet::new(),
+            board_size,
+            dictionary_path,
         };
         boggle.find_all_words();
         boggle
@@ -38,20 +42,25 @@ impl Boggle {
 
     fn find_all_words(&mut self) -> Vec<String> {
         let result: Vec<String> = vec![];
-        let mut dictionary = match utils::TrieManager::load_trie() {
+        let dictionary = match utils::trie_manager::load_trie(self.dictionary_path.clone()) {
             Ok(dictionary) => dictionary,
             Err(e) => {
                 panic!("Failed to load or create the Trie: {}", e);
             }
         };
 
-        for y in 0..4 {
-            for x in 0..4 {
-                let starting_letter: String = String::from(self.array[y][x]);
+        for y in 0..self.board_size {
+            for x in 0..self.board_size {
+                let starting_letter: String = String::from(self.array[y as usize][x as usize]);
                 if dictionary.extend_word(&starting_letter).len() > 0 {
                     let seen_indices = HashSet::<i32>::new();
                     let empty = String::new();
-                    self.step_and_search((x, y), &seen_indices, &empty, &dictionary);
+                    self.step_and_search(
+                        (x as usize, y as usize),
+                        &seen_indices,
+                        &empty,
+                        &dictionary,
+                    );
                 }
             }
         }
@@ -63,7 +72,7 @@ impl Boggle {
         loc: (usize, usize),
         seen: &HashSet<i32>,
         cur: &String,
-        dictionary: &utils::DictTrie::DictTrie,
+        dictionary: &utils::dict_trie::DictTrie,
     ) {
         let mut new_cur = cur.clone();
         new_cur.push(self.array[loc.1][loc.0]);
@@ -125,16 +134,18 @@ impl fmt::Display for Boggle {
 pub struct Game {
     boggle: Boggle,
     found_words: HashSet<String>,
+    game_time: i32,
 }
 impl Game {
-    pub fn new() -> Self {
-        let mut boggle = Boggle::new();
+    pub fn new(board_size: i32, game_time: i32, dictionary_path: String) -> Self {
+        let mut boggle = Boggle::new(board_size, dictionary_path.clone());
         while boggle.get_possible_words().len() < 60 {
-            boggle = Boggle::new();
+            boggle = Boggle::new(board_size, dictionary_path.clone());
         }
         Self {
             boggle,
             found_words: HashSet::new(),
+            game_time,
         }
     }
     pub fn start(&mut self) {
@@ -142,7 +153,7 @@ impl Game {
         let start_time = Instant::now();
         let stdin = io::stdin();
         let mut input = String::new();
-        while start_time.elapsed() < Duration::new(90, 0) {
+        while start_time.elapsed() < Duration::new(self.game_time as u64, 0) {
             input.clear();
             stdin.read_line(&mut input).expect("Failed to read line");
             let word = input.trim().to_uppercase();
@@ -153,7 +164,10 @@ impl Game {
 
     fn print_welcome_message(&self) {
         println!("{}", self.boggle);
-        println!("Game started! Enter as many words as you can in 90 seconds.");
+        println!(
+            "Game started! Enter as many words as you can in {} seconds.",
+            self.game_time
+        );
     }
 
     fn process_word(&mut self, word: &str) {

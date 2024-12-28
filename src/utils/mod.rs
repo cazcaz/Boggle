@@ -1,11 +1,11 @@
 use std::io::{self, Write};
 
-pub mod DictTrie;
+pub mod dict_trie;
 
-pub mod TrieManager;
+pub mod trie_manager;
 
-pub fn trie_CLI() {
-    let mut trie = match TrieManager::load_trie() {
+pub fn trie_cli() {
+    let mut trie = match trie_manager::load_trie(String::from("./dictionary.json")) {
         Ok(trie) => {
             println!("Trie loaded successfully. Ready for lookups.");
             trie
@@ -40,7 +40,7 @@ pub fn trie_CLI() {
     }
 }
 
-fn insert_word(trie: &mut DictTrie::DictTrie) {
+fn insert_word(trie: &mut dict_trie::DictTrie) {
     println!("Enter a word to insert:");
     let mut word = String::new();
     io::stdin().read_line(&mut word).unwrap();
@@ -50,7 +50,7 @@ fn insert_word(trie: &mut DictTrie::DictTrie) {
     println!("Word '{}' inserted into the Trie.", word);
 }
 
-fn check_word(trie: &DictTrie::DictTrie) {
+fn check_word(trie: &dict_trie::DictTrie) {
     println!("Enter a word to check:");
     let mut word = String::new();
     io::stdin().read_line(&mut word).unwrap();
@@ -63,7 +63,7 @@ fn check_word(trie: &DictTrie::DictTrie) {
     }
 }
 
-fn extend_word(trie: &DictTrie::DictTrie) {
+fn extend_word(trie: &dict_trie::DictTrie) {
     println!("Enter a word to find extensions:");
     let mut word = String::new();
     io::stdin().read_line(&mut word).unwrap();
