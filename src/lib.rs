@@ -1,3 +1,4 @@
+use boggle_utils::boggle_char::BoggleChar;
 use rand::Rng;
 use std::collections::HashSet;
 use std::fmt;
@@ -8,9 +9,11 @@ use std::time::Duration;
 
 pub mod utils;
 
+pub mod boggle_utils;
+
 #[derive(Clone)]
 pub struct BoggleBoard {
-    array: Vec<Vec<char>>,
+    array: Vec<Vec<BoggleChar>>,
     possible_words: HashSet<String>,
     board_size: i32,
     diagonals: bool,
@@ -22,9 +25,9 @@ impl BoggleBoard {
         let mut dice = vec![];
         let mut rand = rand::thread_rng();
         for _ in 0..board_size {
-            let mut cur: Vec<char> = vec![];
+            let mut cur: Vec<BoggleChar> = vec![];
             for _ in 0..board_size {
-                let rand_letter: char = rand.gen_range(b'A'..b'Z') as char;
+                let rand_letter: BoggleChar = BoggleChar::from(rand.gen_range(b'A'..b'Z'));
                 cur.push(rand_letter);
             }
             dice.push(cur);
@@ -55,7 +58,8 @@ impl BoggleBoard {
 
         for y in 0..self.board_size {
             for x in 0..self.board_size {
-                let starting_letter: String = String::from(self.array[y as usize][x as usize]);
+                let mut starting_letter = String::new();
+                self.array[y as usize][x as usize].append_to(&mut starting_letter);
                 if dictionary.extend_word(&starting_letter).len() > 0 {
                     let seen_indices = HashSet::<(i32, i32)>::new();
                     let empty = String::new();
@@ -80,7 +84,7 @@ impl BoggleBoard {
     ) {
         // Extend the word by the current letter
         let mut new_cur = cur.clone();
-        new_cur.push(self.array[loc.1][loc.0]);
+        self.array[loc.1][loc.0].append_to(&mut new_cur);
 
         // If this is a valid word, put it into the seen word set
         if Self::valid_word(&new_cur, &dictionary) {
