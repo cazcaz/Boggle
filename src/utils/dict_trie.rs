@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Clone)]
 struct DictTrieNode {
@@ -8,7 +8,7 @@ struct DictTrieNode {
 }
 
 impl DictTrieNode {
-    fn new(c: char) -> Self {
+    fn new() -> Self {
         Self {
             children: HashMap::new(),
             end: false,
@@ -24,7 +24,7 @@ pub struct DictTrie {
 impl DictTrie {
     pub fn new() -> Self {
         Self {
-            root: DictTrieNode::new('0'),
+            root: DictTrieNode::new(),
         }
     }
 
@@ -35,7 +35,7 @@ impl DictTrie {
             current_node = current_node
                 .children
                 .entry(c)
-                .or_insert_with(|| DictTrieNode::new(c));
+                .or_insert_with(|| DictTrieNode::new());
         }
         current_node.end = true;
     }
@@ -88,6 +88,7 @@ impl DictTrie {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
     fn checking_words() {
