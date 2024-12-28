@@ -9,15 +9,16 @@ use std::time::Duration;
 pub mod utils;
 
 #[derive(Clone)]
-pub struct Boggle {
+pub struct BoggleBoard {
     array: Vec<Vec<char>>,
     possible_words: HashSet<String>,
     board_size: i32,
+    diagonals: bool,
     dictionary_path: String,
 }
 
-impl Boggle {
-    pub fn new(board_size: i32, dictionary_path: String) -> Self {
+impl BoggleBoard {
+    pub fn new(board_size: i32, diagonals: bool, dictionary_path: String) -> Self {
         let mut dice = vec![];
         let mut rand = rand::thread_rng();
         for _ in 0..board_size {
@@ -28,14 +29,15 @@ impl Boggle {
             }
             dice.push(cur);
         }
-        let mut boggle = Self {
+        let mut boggle_board = Self {
             array: dice,
             possible_words: HashSet::new(),
             board_size,
+            diagonals,
             dictionary_path,
         };
-        boggle.find_all_words();
-        boggle
+        boggle_board.find_all_words();
+        boggle_board
     }
 
     pub fn get_possible_words(&self) -> HashSet<String> {
@@ -55,7 +57,7 @@ impl Boggle {
             for x in 0..self.board_size {
                 let starting_letter: String = String::from(self.array[y as usize][x as usize]);
                 if dictionary.extend_word(&starting_letter).len() > 0 {
-                    let seen_indices = HashSet::<i32>::new();
+                    let seen_indices = HashSet::<(i32, i32)>::new();
                     let empty = String::new();
                     self.step_and_search(
                         (x as usize, y as usize),
@@ -72,44 +74,53 @@ impl Boggle {
     fn step_and_search(
         &mut self,
         loc: (usize, usize),
-        seen: &HashSet<i32>,
+        seen: &HashSet<(i32, i32)>,
         cur: &String,
         dictionary: &utils::dict_trie::DictTrie,
     ) {
+        // Extend the word by the current letter
         let mut new_cur = cur.clone();
         new_cur.push(self.array[loc.1][loc.0]);
-        if dictionary.check_word(&new_cur) {
-            if new_cur.len() > 2 {
-                self.possible_words.insert(new_cur.clone());
-            }
+
+        // If this is a valid word, put it into the seen word set
+        if Self::valid_word(&new_cur, &dictionary) {
+            self.possible_words.insert(new_cur.clone());
         }
+
+        // If there are no words that start with the current word, then no point searching deeper
         if dictionary.extend_word(&new_cur).len() == 0 {
             return;
         }
+
+        // Update the seen dice set
         let mut new_seen = seen.clone();
-        new_seen.insert(Self::hash(loc.0, loc.1));
-        let steps: Vec<(i32, i32)> = vec![
-            (1, 0),
-            (1, 1),
-            (0, 1),
-            (-1, 1),
-            (-1, 0),
-            (-1, -1),
-            (0, -1),
-            (1, -1),
-        ];
+        new_seen.insert((loc.0 as i32, loc.1 as i32));
+
+        // Every direction to step in
+        let mut steps: Vec<(i32, i32)> = vec![(1, 0), (0, 1), (-1, 0), (0, -1)];
+
+        if self.diagonals {
+            // Add in diagonal steps
+            steps.push((1, 1));
+            steps.push((-1, 1));
+            steps.push((1, -1));
+            steps.push((-1, -1));
+        }
+
         for step in steps {
+            // Take the step
             let new_pos = (loc.0 as i32 + step.0, loc.1 as i32 + step.1);
-            if new_pos.0 < 0 || new_pos.0 > self.board_size - 1 {
+
+            // Not in bounds, skip
+            if !self.in_bounds(&new_pos) {
                 continue;
             }
-            if new_pos.1 < 0 || new_pos.1 > self.board_size - 1 {
+
+            // Visited already
+            if new_seen.contains(&new_pos) {
                 continue;
             }
-            let hash_val = Self::hash(new_pos.0.try_into().unwrap(), new_pos.1.try_into().unwrap());
-            if new_seen.contains(&hash_val) {
-                continue;
-            }
+
             self.step_and_search(
                 (new_pos.0.try_into().unwrap(), new_pos.1.try_into().unwrap()),
                 &new_seen,
@@ -119,12 +130,19 @@ impl Boggle {
         }
     }
 
-    fn hash(x: usize, y: usize) -> i32 {
-        4 * y as i32 + x as i32
+    fn in_bounds(&self, location: &(i32, i32)) -> bool {
+        location.0 >= 0
+            && location.0 <= self.board_size - 1
+            && location.1 >= 0
+            && location.1 <= self.board_size - 1
+    }
+
+    fn valid_word(word: &String, dictionary: &utils::dict_trie::DictTrie) -> bool {
+        word.len() > 2 && dictionary.check_word(word)
     }
 }
 
-impl fmt::Display for Boggle {
+impl fmt::Display for BoggleBoard {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for row in &self.array {
             writeln!(f, "{:?}", row)?;
@@ -133,15 +151,16 @@ impl fmt::Display for Boggle {
     }
 }
 
-pub struct Game {
-    boggle: Boggle,
+pub struct BoggleGame {
+    boggle: BoggleBoard,
     found_words: HashSet<String>,
     game_time: i32,
 }
-impl Game {
-    pub fn new(board_size: i32, game_time: i32, dictionary_path: String) -> Self {
+
+impl BoggleGame {
+    pub fn new(board_size: i32, game_time: i32, diagonals: bool, dictionary_path: String) -> Self {
         Self {
-            boggle: Boggle::new(board_size, dictionary_path.clone()),
+            boggle: BoggleBoard::new(board_size, diagonals, dictionary_path.clone()),
             found_words: HashSet::new(),
             game_time,
         }
@@ -156,6 +175,7 @@ impl Game {
             thread::sleep(Duration::new(game_time as u64, 0));
             timer_tx.send(String::from("TIME_UP")).unwrap();
         }); // Input listener thread
+
         let input_tx = tx.clone();
         thread::spawn(move || {
             let stdin = io::stdin();
@@ -167,12 +187,12 @@ impl Game {
                 input_tx.send(word).unwrap();
             }
         }); // Main thread: wait for the timer or input
+
         loop {
             match rx.recv() {
                 Ok(message) => {
                     if message == "TIME_UP" {
-                        println!("");
-                        println!("Time's up!");
+                        println!("\nTime's up!");
                         break;
                     } else {
                         self.process_word(&message);

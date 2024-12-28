@@ -15,10 +15,8 @@ struct SerializableTrie {
 pub fn load_trie(dictionary_path: String) -> Result<DictTrie, io::Error> {
     let exe_dir = std::env::current_exe()?
         .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
         .unwrap()
         .to_path_buf();
     let file_path: PathBuf = exe_dir.join("resources").join(dictionary_path);

@@ -39,6 +39,7 @@ impl DictTrie {
         }
         current_node.end = true;
     }
+
     pub fn check_word(&self, word: &String) -> bool {
         let word = word.to_lowercase();
         let mut current_node = &self.root;
@@ -50,6 +51,7 @@ impl DictTrie {
         }
         current_node.end
     }
+
     pub fn extend_word(&self, word: &String) -> Vec<String> {
         let word = word.to_lowercase();
         let mut results = Vec::new();
@@ -60,6 +62,7 @@ impl DictTrie {
                 None => return results,
             }
         }
+
         fn collect_words(node: &DictTrieNode, prefix: &str, results: &mut Vec<String>) {
             let mut current_word = prefix.to_string();
             if node.end {
@@ -71,7 +74,9 @@ impl DictTrie {
                 current_word.pop();
             }
         }
-        collect_words(current_node, &word, &mut results); // Capitalize the first letter of each word in the results
+
+        collect_words(current_node, &word, &mut results);
+
         results
             .into_iter()
             .map(|w| {
