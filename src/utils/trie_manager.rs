@@ -5,7 +5,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-const TRIE_FILE: &str = "english_trie.bin";
+const TRIE_FILE: &str = "resources/english_trie.bin";
 
 #[derive(Serialize, Deserialize)]
 struct SerializableTrie {

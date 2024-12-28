@@ -2,7 +2,9 @@ use rand::Rng;
 use std::collections::HashSet;
 use std::fmt;
 use std::io;
-use std::time::{Duration, Instant};
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 pub mod utils;
 
@@ -98,10 +100,10 @@ impl Boggle {
         ];
         for step in steps {
             let new_pos = (loc.0 as i32 + step.0, loc.1 as i32 + step.1);
-            if new_pos.0 < 0 || new_pos.0 > 3 {
+            if new_pos.0 < 0 || new_pos.0 > self.board_size - 1 {
                 continue;
             }
-            if new_pos.1 < 0 || new_pos.1 > 3 {
+            if new_pos.1 < 0 || new_pos.1 > self.board_size - 1 {
                 continue;
             }
             let hash_val = Self::hash(new_pos.0.try_into().unwrap(), new_pos.1.try_into().unwrap());
@@ -138,26 +140,49 @@ pub struct Game {
 }
 impl Game {
     pub fn new(board_size: i32, game_time: i32, dictionary_path: String) -> Self {
-        let mut boggle = Boggle::new(board_size, dictionary_path.clone());
-        while boggle.get_possible_words().len() < 60 {
-            boggle = Boggle::new(board_size, dictionary_path.clone());
-        }
         Self {
-            boggle,
+            boggle: Boggle::new(board_size, dictionary_path.clone()),
             found_words: HashSet::new(),
             game_time,
         }
     }
+
     pub fn start(&mut self) {
         self.print_welcome_message();
-        let start_time = Instant::now();
-        let stdin = io::stdin();
-        let mut input = String::new();
-        while start_time.elapsed() < Duration::new(self.game_time as u64, 0) {
-            input.clear();
-            stdin.read_line(&mut input).expect("Failed to read line");
-            let word = input.trim().to_uppercase();
-            self.process_word(&word);
+        let (tx, rx) = mpsc::channel(); // Timer thread
+        let timer_tx = tx.clone();
+        let game_time = self.game_time;
+        thread::spawn(move || {
+            thread::sleep(Duration::new(game_time as u64, 0));
+            timer_tx.send(String::from("TIME_UP")).unwrap();
+        }); // Input listener thread
+        let input_tx = tx.clone();
+        thread::spawn(move || {
+            let stdin = io::stdin();
+            let mut input = String::new();
+            loop {
+                input.clear();
+                stdin.read_line(&mut input).expect("Failed to read line");
+                let word = input.trim().to_uppercase();
+                input_tx.send(word).unwrap();
+            }
+        }); // Main thread: wait for the timer or input
+        loop {
+            match rx.recv() {
+                Ok(message) => {
+                    if message == "TIME_UP" {
+                        println!("");
+                        println!("Time's up!");
+                        break;
+                    } else {
+                        self.process_word(&message);
+                    }
+                }
+                Err(_) => {
+                    println!("Error receiving message.");
+                    break;
+                }
+            }
         }
         self.print_final_scores();
     }
