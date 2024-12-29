@@ -1,6 +1,5 @@
 use boggle_utils::boggle_board::BoggleBoard;
 use std::collections::HashSet;
-use std::fmt;
 use std::io;
 use std::sync::mpsc;
 use std::thread;
@@ -16,7 +15,7 @@ pub struct BoggleSolver {
     possible_words: HashSet<String>,
     board_size: i32,
     diagonals: bool,
-    dictionary_path: String,
+    dictionary: utils::dict_trie::DictTrie,
 }
 
 impl BoggleSolver {
@@ -26,7 +25,8 @@ impl BoggleSolver {
             possible_words: HashSet::new(),
             board_size,
             diagonals,
-            dictionary_path,
+            dictionary: utils::trie_manager::load_trie(dictionary_path)
+                .unwrap_or_else(|e| panic!("Failed to load or create the Trie: {}", e)),
         };
         boggle_board.find_all_words();
         boggle_board
@@ -38,12 +38,6 @@ impl BoggleSolver {
 
     fn find_all_words(&mut self) -> Vec<String> {
         let result: Vec<String> = vec![];
-        let dictionary = match utils::trie_manager::load_trie(self.dictionary_path.clone()) {
-            Ok(dictionary) => dictionary,
-            Err(e) => {
-                panic!("Failed to load or create the Trie: {}", e);
-            }
-        };
 
         for y in 0..self.board_size {
             for x in 0..self.board_size {
@@ -51,39 +45,27 @@ impl BoggleSolver {
                 self.board
                     .access((y as usize, x as usize))
                     .append_to(&mut starting_letter);
-                if dictionary.extend_word(&starting_letter).len() > 0 {
+                if self.has_extension(&starting_letter) {
                     let seen_indices = HashSet::<(i32, i32)>::new();
                     let empty = String::new();
-                    self.step_and_search(
-                        (x as usize, y as usize),
-                        &seen_indices,
-                        &empty,
-                        &dictionary,
-                    );
+                    self.step_and_search((x as usize, y as usize), &seen_indices, &empty);
                 }
             }
         }
         result
     }
 
-    fn step_and_search(
-        &mut self,
-        loc: (usize, usize),
-        seen: &HashSet<(i32, i32)>,
-        cur: &String,
-        dictionary: &utils::dict_trie::DictTrie,
-    ) {
+    fn step_and_search(&mut self, loc: (usize, usize), seen: &HashSet<(i32, i32)>, cur: &String) {
         // Extend the word by the current letter
         let mut new_cur = cur.clone();
         self.board.access((loc.1, loc.0)).append_to(&mut new_cur);
 
         // If this is a valid word, put it into the seen word set
-        if Self::valid_word(&new_cur, &dictionary) {
+        if self.valid_word(&new_cur) {
             self.possible_words.insert(new_cur.clone());
         }
 
-        // If there are no words that start with the current word, then no point searching deeper
-        if dictionary.extend_word(&new_cur).len() == 0 {
+        if !self.has_extension(&new_cur) {
             return;
         }
 
@@ -120,13 +102,16 @@ impl BoggleSolver {
                 (new_pos.0.try_into().unwrap(), new_pos.1.try_into().unwrap()),
                 &new_seen,
                 &new_cur,
-                dictionary,
             );
         }
     }
 
-    fn valid_word(word: &String, dictionary: &utils::dict_trie::DictTrie) -> bool {
-        word.len() > 2 && dictionary.check_word(word)
+    fn valid_word(&self, word: &String) -> bool {
+        word.len() > 2 && self.dictionary.check_word(word)
+    }
+
+    fn has_extension(&self, word: &String) -> bool {
+        word.len() == 1 || self.dictionary.extend_word(&word).len() > 0
     }
 }
 

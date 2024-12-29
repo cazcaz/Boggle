@@ -49,7 +49,6 @@ fn create_and_serialize_trie(dictionary_path: PathBuf) -> Result<DictTrie, io::E
 }
 
 fn load_words_from_json(file_path: PathBuf) -> Result<Vec<String>, io::Error> {
-    dbg!(&file_path);
     let file = fs::File::open(file_path)?;
     let reader = io::BufReader::new(file);
     let vec: Vec<String> = serde_json::from_reader(reader)?;

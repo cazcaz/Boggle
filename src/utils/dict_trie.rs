@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 struct DictTrieNode {
     children: HashMap<char, DictTrieNode>,
     end: bool,
@@ -16,7 +16,7 @@ impl DictTrieNode {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct DictTrie {
     root: DictTrieNode,
 }
