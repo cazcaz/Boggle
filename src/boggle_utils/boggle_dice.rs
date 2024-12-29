@@ -1,4 +1,5 @@
-use rand::{seq::SliceRandom, Rng};
+use rand::{prelude::*, seq::SliceRandom, Rng, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 
 use super::boggle_char::BoggleChar;
 
@@ -9,14 +10,14 @@ struct BoggleDie {
 
 impl BoggleDie {
     fn roll(&self) -> BoggleChar {
-        let mut rand = rand::thread_rng();
+        let mut rand = ChaCha8Rng::seed_from_u64(0);
         self.letters[rand.gen_range(0..6)].clone()
     }
 }
 
 pub fn scramble_dice(board_size: i32) -> Vec<BoggleChar> {
     // If 4 or 5, use the official dice
-    let mut rand = rand::thread_rng();
+    let mut rand = ChaCha8Rng::seed_from_u64(0);
     match board_size {
         4 => {
             let mut dice: Vec<BoggleDie> = vec![];
@@ -56,7 +57,7 @@ pub fn scramble_dice(board_size: i32) -> Vec<BoggleChar> {
 
 // For board sizes larger than 5x5, we just create a larger board based on standard boggle letter distributions
 fn roll_fake_dice() -> BoggleChar {
-    let mut rand = rand::thread_rng();
+    let mut rand = ChaCha8Rng::seed_from_u64(0);
     let chance = rand.gen_range(1..86);
     if chance <= 19 {
         return BoggleChar::E;

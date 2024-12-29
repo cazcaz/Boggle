@@ -1,4 +1,6 @@
-use boggle::BoggleGame;
+use std::time::Instant;
+
+use boggle::{BoggleGame, BoggleSolver};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -21,4 +23,17 @@ fn main() {
     let args = Args::parse();
     let mut game = BoggleGame::new(args.size, args.time, args.diagonals, args.dictionary);
     game.start();
+    /*let iterations = 100;
+    let mut boggle = BoggleSolver::new(args.size, args.diagonals, args.dictionary.clone());
+
+    let mut total_duration = 0;
+    for _ in 0..iterations {
+        let start = Instant::now();
+        boggle.reshuffle();
+        let duration = start.elapsed();
+        total_duration += duration.as_nanos();
+    }
+
+    let average_duration = (total_duration / iterations) as f64 / 1e9;
+    println!("Average time elapsed: {} seconds", average_duration);*/
 }
