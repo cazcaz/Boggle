@@ -113,6 +113,12 @@ impl BoggleSolver {
     fn has_extension(&self, word: &String) -> bool {
         word.len() == 1 || self.dictionary.extend_word(&word).len() > 0
     }
+
+    pub fn reshuffle(&mut self) {
+        self.board = BoggleBoard::new(self.board_size);
+        self.possible_words = HashSet::new();
+        self.find_all_words();
+    }
 }
 
 pub struct BoggleGame {
