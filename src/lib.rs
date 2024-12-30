@@ -38,6 +38,9 @@ impl BoggleSolver {
     }
 
     fn store_all_words(&mut self) {
+        if self.possible_words.len() > 0 {
+            self.possible_words = HashSet::new();
+        }
         for word in self.find_all_words() {
             self.possible_words.insert(word);
         }
@@ -147,7 +150,6 @@ impl BoggleSolver {
 
     pub fn reshuffle(&mut self) {
         self.board = BoggleBoard::new(self.board_size);
-        self.possible_words = HashSet::new();
         self.store_all_words();
     }
 }
