@@ -40,6 +40,10 @@ impl BoggleSolver {
         boggle_board
     }
 
+    pub fn get_board(&self) -> BoggleBoard {
+        self.board.clone()
+    }
+
     pub fn get_possible_words(&self) -> HashSet<String> {
         self.possible_words.clone()
     }
