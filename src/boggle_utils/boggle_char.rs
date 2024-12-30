@@ -1,6 +1,7 @@
+use serde::Serialize;
 use std::fmt;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize)]
 pub enum BoggleChar {
     A,
     B,

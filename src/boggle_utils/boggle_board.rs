@@ -1,7 +1,8 @@
 use super::{boggle_char::BoggleChar, boggle_dice};
+use serde::Serialize;
 use std::fmt;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct BoggleBoard {
     board: Vec<Vec<BoggleChar>>,
     board_size: i32,
