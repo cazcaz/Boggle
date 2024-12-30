@@ -28,20 +28,18 @@ impl DictTrie {
         }
     }
 
-    pub fn insert_word(&mut self, word: &String) {
-        let word = word.to_lowercase();
+    pub fn insert_word(&mut self, word: &str) {
         let mut current_node = &mut self.root;
         for c in word.chars() {
             current_node = current_node
                 .children
                 .entry(c)
-                .or_insert_with(|| DictTrieNode::new());
+                .or_insert_with(DictTrieNode::new);
         }
         current_node.end = true;
     }
 
-    pub fn check_word(&self, word: &String) -> bool {
-        let word = word.to_lowercase();
+    pub fn check_word(&self, word: &str) -> bool {
         let mut current_node = &self.root;
         for c in word.chars() {
             match current_node.children.get(&c) {
@@ -52,8 +50,7 @@ impl DictTrie {
         current_node.end
     }
 
-    pub fn extend_word(&self, word: &String) -> Vec<String> {
-        let word = word.to_lowercase();
+    pub fn extend_word(&self, word: &str) -> Vec<String> {
         let mut results = Vec::new();
         let mut current_node = &self.root;
         for c in word.chars() {
@@ -64,29 +61,18 @@ impl DictTrie {
         }
 
         fn collect_words(node: &DictTrieNode, prefix: &str, results: &mut Vec<String>) {
-            let mut current_word = prefix.to_string();
             if node.end {
-                results.push(current_word.clone());
+                results.push(prefix.to_string());
             }
             for (ch, child) in &node.children {
-                current_word.push(*ch);
-                collect_words(child, &current_word, results);
-                current_word.pop();
+                let mut new_prefix = prefix.to_string();
+                new_prefix.push(*ch);
+                collect_words(child, &new_prefix, results);
             }
         }
 
-        collect_words(current_node, &word, &mut results);
-
+        collect_words(current_node, word, &mut results);
         results
-            .into_iter()
-            .map(|w| {
-                let mut chars = w.chars();
-                match chars.next() {
-                    None => String::new(),
-                    Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
-                }
-            })
-            .collect()
     }
 }
 
