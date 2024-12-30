@@ -1,5 +1,6 @@
 use boggle_utils::boggle_board::BoggleBoard;
 use rayon::prelude::*;
+use serde_json::map::Iter;
 use std::collections::HashSet;
 use std::io;
 use std::sync::mpsc;
@@ -17,10 +18,16 @@ pub struct BoggleSolver {
     board_size: i32,
     diagonals: bool,
     dictionary: utils::dict_trie::DictTrie,
+    multi_thread: bool,
 }
 
 impl BoggleSolver {
-    pub fn new(board_size: i32, diagonals: bool, dictionary_path: String) -> Self {
+    pub fn new(
+        board_size: i32,
+        diagonals: bool,
+        dictionary_path: String,
+        multi_thread: bool,
+    ) -> Self {
         let mut boggle_board = Self {
             board: BoggleBoard::new(board_size),
             possible_words: HashSet::new(),
@@ -28,6 +35,7 @@ impl BoggleSolver {
             diagonals,
             dictionary: utils::trie_manager::load_trie(dictionary_path)
                 .unwrap_or_else(|e| panic!("Failed to load or create the Trie: {}", e)),
+            multi_thread,
         };
         boggle_board.store_all_words();
         boggle_board
@@ -41,6 +49,7 @@ impl BoggleSolver {
         if self.possible_words.len() > 0 {
             self.possible_words = HashSet::new();
         }
+
         for word in self.find_all_words() {
             self.possible_words.insert(word);
         }
@@ -48,30 +57,41 @@ impl BoggleSolver {
 
     fn find_all_words(&self) -> Vec<String> {
         let board_size = self.board_size;
-        let results: Vec<Vec<String>> = (0..board_size * board_size)
-            .into_par_iter()
-            .map(|i| {
-                let y = i / board_size;
-                let x = i % board_size;
-                let mut starting_letter = String::new();
-                self.board
-                    .access((y as usize, x as usize))
-                    .append_to(&mut starting_letter);
-                if self.has_extension(&starting_letter) {
-                    let seen_indices = HashSet::<(i32, i32)>::new();
-                    let mut result = Vec::new();
-                    self.step_and_search(
-                        (x as usize, y as usize),
-                        &seen_indices,
-                        &mut result,
-                        &mut vec![],
-                    );
-                    result
-                } else {
-                    vec![]
-                }
-            })
-            .collect();
+
+        let map_fn = |i: i32| -> Vec<String> {
+            let y = i / board_size;
+            let x = i % board_size;
+            let mut starting_letter = String::new();
+            self.board
+                .access((y as usize, x as usize))
+                .append_to(&mut starting_letter);
+            if self.has_extension(&starting_letter) {
+                let seen_indices = HashSet::<(i32, i32)>::new();
+                let mut result = Vec::new();
+                self.step_and_search(
+                    (x as usize, y as usize),
+                    &seen_indices,
+                    &mut result,
+                    &mut vec![],
+                );
+                result
+            } else {
+                vec![]
+            }
+        };
+
+        let results: Vec<Vec<String>> = if self.multi_thread {
+            (0..board_size * board_size)
+                .into_par_iter()
+                .map(map_fn)
+                .collect()
+        } else {
+            (0..board_size * board_size)
+                .into_iter()
+                .map(map_fn)
+                .collect()
+        };
+
         results.into_iter().flatten().collect()
     }
 
@@ -161,9 +181,15 @@ pub struct BoggleGame {
 }
 
 impl BoggleGame {
-    pub fn new(board_size: i32, game_time: i32, diagonals: bool, dictionary_path: String) -> Self {
+    pub fn new(
+        board_size: i32,
+        game_time: i32,
+        diagonals: bool,
+        dictionary_path: String,
+        multi_thread: bool,
+    ) -> Self {
         Self {
-            boggle: BoggleSolver::new(board_size, diagonals, dictionary_path.clone()),
+            boggle: BoggleSolver::new(board_size, diagonals, dictionary_path.clone(), multi_thread),
             found_words: HashSet::new(),
             game_time,
         }

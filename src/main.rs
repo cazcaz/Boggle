@@ -15,10 +15,19 @@ struct Args {
 
     #[arg(long, default_value_t = String::from("dictionary.json"))]
     dictionary: String,
+
+    #[arg(short, long, action)]
+    multi_thread: bool,
 }
 
 fn main() {
     let args = Args::parse();
-    let mut game = BoggleGame::new(args.size, args.time, args.diagonals, args.dictionary);
+    let mut game = BoggleGame::new(
+        args.size,
+        args.time,
+        args.diagonals,
+        args.dictionary,
+        args.multi_thread,
+    );
     game.start();
 }
