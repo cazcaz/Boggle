@@ -22,30 +22,33 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    //   let mut game = BoggleGame::new(args.size, args.time, args.diagonals, args.dictionary);
-    //  game.start();
     let mut frequency: HashMap<String, u32> = HashMap::new();
     let mut boggle = BoggleSolver::new(args.size, args.diagonals, args.dictionary.clone());
 
     for i in 0..args.runs {
         boggle.reshuffle();
-        //println!("Run: {}", i + 1);
+        println!("Run: {}", i + 1);
         let found_words = boggle.get_possible_words();
         let mut found_words_vec: Vec<&String> = found_words.iter().collect();
         found_words_vec.sort_by(|a, b| b.len().cmp(&a.len()));
 
         for word in found_words_vec {
-            println!("{}", word);
+            //println!("{}", word);
             let count = frequency.entry(word.clone()).or_insert(0);
             *count += 1;
         }
     }
-    //println!("");
+    println!("");
     let mut freq_vec: Vec<(&String, &u32)> = frequency.iter().collect();
+    let mut word_count = 0;
     freq_vec.sort_by(|a, b| b.1.cmp(&a.1));
     for (word, count) in freq_vec {
         if *count > 3 {
-            //println!("{}: {}", word, count);
+            println!("{}: {}", word, count);
+            word_count += 1;
+        }
+        if word_count > 20 {
+            break;
         }
     }
 }

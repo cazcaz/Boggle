@@ -1,4 +1,5 @@
 use boggle_utils::boggle_board::BoggleBoard;
+use rayon::prelude::*;
 use std::collections::HashSet;
 use std::io;
 use std::sync::mpsc;
@@ -28,7 +29,7 @@ impl BoggleSolver {
             dictionary: utils::trie_manager::load_trie(dictionary_path)
                 .unwrap_or_else(|e| panic!("Failed to load or create the Trie: {}", e)),
         };
-        boggle_board.find_all_words();
+        boggle_board.store_all_words();
         boggle_board
     }
 
@@ -36,36 +37,61 @@ impl BoggleSolver {
         self.possible_words.clone()
     }
 
-    fn find_all_words(&mut self) -> Vec<String> {
-        let result: Vec<String> = vec![];
+    fn store_all_words(&mut self) {
+        for word in self.find_all_words() {
+            self.possible_words.insert(word);
+        }
+    }
 
-        for y in 0..self.board_size {
-            for x in 0..self.board_size {
+    fn find_all_words(&self) -> Vec<String> {
+        let board_size = self.board_size;
+        let results: Vec<Vec<String>> = (0..board_size * board_size)
+            .into_par_iter()
+            .map(|i| {
+                let y = i / board_size;
+                let x = i % board_size;
                 let mut starting_letter = String::new();
                 self.board
                     .access((y as usize, x as usize))
                     .append_to(&mut starting_letter);
                 if self.has_extension(&starting_letter) {
                     let seen_indices = HashSet::<(i32, i32)>::new();
-                    let empty = String::new();
-                    self.step_and_search((x as usize, y as usize), &seen_indices, &empty);
+                    let mut result = Vec::new();
+                    self.step_and_search(
+                        (x as usize, y as usize),
+                        &seen_indices,
+                        &mut result,
+                        &mut vec![],
+                    );
+                    result
+                } else {
+                    vec![]
                 }
-            }
-        }
-        result
+            })
+            .collect();
+        results.into_iter().flatten().collect()
     }
 
-    fn step_and_search(&mut self, loc: (usize, usize), seen: &HashSet<(i32, i32)>, cur: &String) {
+    fn step_and_search(
+        &self,
+        loc: (usize, usize),
+        seen: &HashSet<(i32, i32)>,
+        found: &mut Vec<String>,
+        cur: &Vec<char>,
+    ) {
         // Extend the word by the current letter
         let mut new_cur = cur.clone();
-        self.board.access((loc.1, loc.0)).append_to(&mut new_cur);
-
-        // If this is a valid word, put it into the seen word set
-        if self.valid_word(&new_cur) {
-            self.possible_words.insert(new_cur.clone());
+        let chars = self.board.access((loc.1, loc.0)).to_char_vec();
+        for c in chars {
+            new_cur.push(c);
         }
 
-        if !self.has_extension(&new_cur) {
+        // If this is a valid word, put it into the seen word set
+        if self.valid_word(&new_cur.iter().collect::<String>()) {
+            found.push(new_cur.iter().collect::<String>());
+        }
+
+        if !self.has_extension(&new_cur.iter().collect::<String>()) {
             return;
         }
 
@@ -73,16 +99,20 @@ impl BoggleSolver {
         let mut new_seen = seen.clone();
         new_seen.insert((loc.0 as i32, loc.1 as i32));
 
-        // Every direction to step in
-        let mut steps: Vec<(i32, i32)> = vec![(1, 0), (0, 1), (-1, 0), (0, -1)];
-
-        if self.diagonals {
-            // Add in diagonal steps
-            steps.push((1, 1));
-            steps.push((-1, 1));
-            steps.push((1, -1));
-            steps.push((-1, -1));
-        }
+        let steps = if self.diagonals {
+            vec![
+                (1, 0),
+                (0, 1),
+                (-1, 0),
+                (0, -1),
+                (1, 1),
+                (-1, 1),
+                (1, -1),
+                (-1, -1),
+            ]
+        } else {
+            vec![(1, 0), (0, 1), (-1, 0), (0, -1)]
+        };
 
         for step in steps {
             // Take the step
@@ -101,23 +131,24 @@ impl BoggleSolver {
             self.step_and_search(
                 (new_pos.0.try_into().unwrap(), new_pos.1.try_into().unwrap()),
                 &new_seen,
+                found,
                 &new_cur,
             );
         }
     }
 
-    fn valid_word(&self, word: &String) -> bool {
+    fn valid_word(&self, word: &str) -> bool {
         word.len() > 2 && self.dictionary.check_word(word)
     }
 
-    fn has_extension(&self, word: &String) -> bool {
+    fn has_extension(&self, word: &str) -> bool {
         word.len() == 1 || self.dictionary.extend_word(&word).len() > 0
     }
 
     pub fn reshuffle(&mut self) {
         self.board = BoggleBoard::new(self.board_size);
         self.possible_words = HashSet::new();
-        self.find_all_words();
+        self.store_all_words();
     }
 }
 
@@ -165,7 +196,7 @@ impl BoggleGame {
                         println!("\nTime's up!");
                         break;
                     } else {
-                        self.process_word(&message);
+                        self.process_word(&message.to_lowercase());
                     }
                 }
                 Err(_) => {
@@ -214,7 +245,7 @@ impl BoggleGame {
         let mut score = 0;
         for word in found_word_vec {
             score += word.len() - 2;
-            println!("{} {}", word, word.len() - 2);
+            println!("{} {}", word.to_uppercase(), word.len() - 2);
         }
         println!("\nYour final score: {}", score);
     }
@@ -233,7 +264,7 @@ impl BoggleGame {
             }
             println!(
                 "{} {}",
-                possible_word_vec[i],
+                possible_word_vec[i].to_uppercase(),
                 possible_word_vec[i].len() - 2
             );
         }
