@@ -1,6 +1,5 @@
 use boggle_utils::boggle_board::BoggleBoard;
 use rayon::prelude::*;
-use serde_json::map::Iter;
 use std::collections::HashSet;
 use std::io;
 use std::sync::mpsc;
