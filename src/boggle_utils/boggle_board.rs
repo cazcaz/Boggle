@@ -36,6 +36,10 @@ impl BoggleBoard {
     pub fn access(&self, coords: (usize, usize)) -> BoggleChar {
         self.board[coords.0][coords.1].clone()
     }
+
+    pub fn get_chars(&self) -> Vec<Vec<BoggleChar>> {
+        self.board.clone()
+    }
 }
 
 impl fmt::Display for BoggleBoard {
