@@ -26,6 +26,26 @@ impl BoggleBoard {
         }
     }
 
+    pub fn from(chars: Vec<char>, size: i32) -> Self {
+        let full_chars: Vec<BoggleChar> = chars
+            .into_iter()
+            .map(|c| BoggleChar::from(c.to_ascii_uppercase() as u8))
+            .collect();
+        let mut board: Vec<Vec<BoggleChar>> = vec![];
+        for i in 0..size {
+            let mut row: Vec<BoggleChar> = vec![];
+            for j in 0..size {
+                let index: usize = (i * size + j).try_into().unwrap();
+                row.push(full_chars[index].clone());
+            }
+            board.push(row);
+        }
+        Self {
+            board,
+            board_size: size,
+        }
+    }
+
     pub fn in_bounds(&self, location: &(i32, i32)) -> bool {
         location.0 >= 0
             && location.0 <= self.board_size - 1

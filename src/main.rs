@@ -1,4 +1,4 @@
-use boggle::BoggleGame;
+use boggle::{BoggleGame, BoggleSolverInterface};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -18,16 +18,30 @@ struct Args {
 
     #[arg(short, long, action)]
     multi_thread: bool,
+
+    #[arg(long, default_value_t = String::from(""))]
+    board: String,
 }
 
 fn main() {
     let args = Args::parse();
-    let mut game = BoggleGame::new(
-        args.size,
-        args.time,
-        args.diagonals,
-        args.dictionary,
-        args.multi_thread,
-    );
-    game.start();
+    if args.board.len() == 0 {
+        let mut game = BoggleGame::new(
+            args.size,
+            args.time,
+            args.diagonals,
+            args.dictionary,
+            args.multi_thread,
+        );
+        game.start();
+    } else {
+        let solver = BoggleSolverInterface::new(
+            args.board,
+            args.size,
+            args.diagonals,
+            args.dictionary,
+            args.multi_thread,
+        );
+        solver.output_words();
+    }
 }

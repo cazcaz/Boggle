@@ -40,6 +40,25 @@ impl BoggleSolver {
         boggle_board
     }
 
+    // To solve from a custom board
+    pub fn from(
+        board: Vec<char>,
+        board_size: i32,
+        diagonals: bool,
+        dictionary_path: String,
+        multi_thread: bool,
+    ) -> Self {
+        Self {
+            board: BoggleBoard::from(board, board_size),
+            possible_words: HashSet::new(),
+            board_size,
+            diagonals,
+            dictionary: utils::trie_manager::load_trie(dictionary_path)
+                .unwrap_or_else(|e| panic!("Failed to load or create the Trie: {}", e)),
+            multi_thread,
+        }
+    }
+
     pub fn get_board(&self) -> BoggleBoard {
         self.board.clone()
     }
@@ -301,5 +320,51 @@ impl BoggleGame {
         }
         let max_score: usize = possible_word_vec.iter().map(|word| word.len() - 2).sum();
         println!("\nYour potential max score: {}", max_score);
+    }
+}
+
+pub struct BoggleSolverInterface {
+    boggle: BoggleSolver,
+}
+
+impl BoggleSolverInterface {
+    pub fn new(
+        board: String,
+        board_size: i32,
+        diagonals: bool,
+        dictionary_path: String,
+        multi_thread: bool,
+    ) -> Self {
+        if board.len() == 0 {
+            let mut solver: Self = Self {
+                boggle: BoggleSolver::new(board_size, diagonals, dictionary_path, multi_thread),
+            };
+            solver.boggle.store_all_words();
+            return solver;
+        }
+        if board.len() != board_size as usize * board_size as usize {
+            panic!("Board size was not correct!");
+        }
+        let mut solver: Self = Self {
+            boggle: BoggleSolver::from(
+                board.chars().into_iter().collect(),
+                board_size,
+                diagonals,
+                dictionary_path,
+                multi_thread,
+            ),
+        };
+        solver.boggle.store_all_words();
+        solver
+    }
+
+    pub fn output_words(&self) {
+        let mut possible_word_vec: Vec<String> =
+            self.boggle.get_possible_words().into_iter().collect();
+        possible_word_vec.sort_by(|a, b| b.len().cmp(&a.len()));
+        for word in &possible_word_vec {
+            println!("{} {}", word, word.len());
+        }
+        println!("\n{}", possible_word_vec.len());
     }
 }
