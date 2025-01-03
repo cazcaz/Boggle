@@ -336,7 +336,7 @@ impl BoggleGame {
 }
 
 pub struct BoggleSolverInterface {
-    boggle: BoggleSolver,
+    pub boggle: BoggleSolver,
 }
 
 impl BoggleSolverInterface {
