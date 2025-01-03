@@ -2,17 +2,21 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-struct DictTrieNode {
+pub struct DictTrieNode {
     children: HashMap<char, DictTrieNode>,
-    end: bool,
+    pub end: bool,
 }
 
 impl DictTrieNode {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             children: HashMap::new(),
             end: false,
         }
+    }
+
+    pub fn get_child(&self, letter: &char) -> Option<&Self> {
+        self.children.get(&letter)
     }
 }
 
@@ -73,6 +77,10 @@ impl DictTrie {
 
         collect_words(current_node, word, &mut results);
         results
+    }
+
+    pub fn get_start_node(&self) -> &DictTrieNode {
+        &self.root
     }
 }
 

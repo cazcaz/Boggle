@@ -1,10 +1,12 @@
 use boggle_utils::boggle_board::BoggleBoard;
+use boggle_utils::boggle_char::BoggleChar;
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::io;
 use std::sync::mpsc;
-use std::thread;
+use std::thread::{self};
 use std::time::Duration;
+use utils::dict_trie::DictTrieNode;
 
 pub mod utils;
 
@@ -83,23 +85,15 @@ impl BoggleSolver {
         let map_fn = |i: i32| -> Vec<String> {
             let y = i / board_size;
             let x = i % board_size;
-            let mut starting_letter = String::new();
-            self.board
-                .access((y as usize, x as usize))
-                .append_to(&mut starting_letter);
-            if self.has_extension(&starting_letter) {
-                let seen_indices = HashSet::<(i32, i32)>::new();
-                let mut result = Vec::new();
-                self.step_and_search(
-                    (x as usize, y as usize),
-                    &seen_indices,
-                    &mut result,
-                    &mut vec![],
-                );
-                result
-            } else {
-                vec![]
-            }
+            let mut result = Vec::new();
+            self.step_and_search(
+                (x, y),
+                &mut HashSet::<(i32, i32)>::new(),
+                &mut result,
+                &mut vec![],
+                self.dictionary.get_start_node(),
+            );
+            result
         };
 
         let results: Vec<Vec<String>> = if self.multi_thread {
@@ -119,30 +113,53 @@ impl BoggleSolver {
 
     fn step_and_search(
         &self,
-        loc: (usize, usize),
-        seen: &HashSet<(i32, i32)>,
+        loc: (i32, i32),
+        seen: &mut HashSet<(i32, i32)>,
         found: &mut Vec<String>,
-        cur: &Vec<char>,
+        cur_word: &mut Vec<char>,
+        prev_node: &DictTrieNode,
     ) {
-        // Extend the word by the current letter
-        let mut new_cur = cur.clone();
-        let chars = self.board.access((loc.1, loc.0)).to_char_vec();
-        for c in chars {
-            new_cur.push(c);
-        }
-
-        // If this is a valid word, put it into the seen word set
-        if self.valid_word(&new_cur.iter().collect::<String>()) {
-            found.push(new_cur.iter().collect::<String>());
-        }
-
-        if !self.has_extension(&new_cur.iter().collect::<String>()) {
+        let mut cur_node: &DictTrieNode = prev_node;
+        // If we have stepped here but it was the wrong choice, return early
+        if seen.contains(&loc) {
             return;
         }
 
-        // Update the seen dice set
-        let mut new_seen = seen.clone();
-        new_seen.insert((loc.0 as i32, loc.1 as i32));
+        let current_letter: BoggleChar = self.board.access((loc.1 as usize, loc.0 as usize));
+        match current_letter {
+            BoggleChar::Qu => {
+                if let Some(node) = cur_node.get_child(&'q') {
+                    cur_node = node;
+                } else {
+                    return;
+                }
+                cur_word.push('q');
+                if let Some(node) = cur_node.get_child(&'u') {
+                    cur_node = node;
+                } else {
+                    cur_word.pop();
+                    return;
+                }
+                cur_word.push('u');
+            }
+            _ => {
+                let letter = current_letter.to_char_vec()[0];
+                if let Some(node) = cur_node.get_child(&letter) {
+                    cur_node = node;
+                } else {
+                    return;
+                }
+                cur_word.push(letter);
+            }
+        }
+
+        // Check if the current location is valid
+        seen.insert(loc);
+
+        // If this is a valid word, put it into the seen word set
+        if cur_word.len() > 2 && cur_node.end {
+            found.push(cur_word.iter().collect::<String>());
+        }
 
         let steps = if self.diagonals {
             vec![
@@ -161,33 +178,28 @@ impl BoggleSolver {
 
         for step in steps {
             // Take the step
-            let new_pos = (loc.0 as i32 + step.0, loc.1 as i32 + step.1);
+            let new_pos = (loc.0 + step.0, loc.1 + step.1);
 
             // Not in bounds, skip
             if !self.board.in_bounds(&new_pos) {
                 continue;
             }
 
-            // Visited already
-            if new_seen.contains(&new_pos) {
-                continue;
-            }
-
-            self.step_and_search(
-                (new_pos.0.try_into().unwrap(), new_pos.1.try_into().unwrap()),
-                &new_seen,
-                found,
-                &new_cur,
-            );
+            self.step_and_search(new_pos, seen, found, cur_word, &cur_node);
         }
-    }
 
-    fn valid_word(&self, word: &str) -> bool {
-        word.len() > 2 && self.dictionary.check_word(word)
-    }
+        seen.remove(&loc);
 
-    fn has_extension(&self, word: &str) -> bool {
-        word.len() == 1 || self.dictionary.extend_word(&word).len() > 0
+        // Special handling for Qu
+        match current_letter {
+            BoggleChar::Qu => {
+                cur_word.pop();
+                cur_word.pop();
+            }
+            _ => {
+                cur_word.pop();
+            }
+        }
     }
 
     pub fn reshuffle(&mut self) {
@@ -361,7 +373,14 @@ impl BoggleSolverInterface {
     pub fn output_words(&self) {
         let mut possible_word_vec: Vec<String> =
             self.boggle.get_possible_words().into_iter().collect();
-        possible_word_vec.sort_by(|a, b| b.len().cmp(&a.len()));
+        possible_word_vec.sort_by(|a, b| {
+            let len_cmp = b.len().cmp(&a.len());
+            if len_cmp == std::cmp::Ordering::Equal {
+                a.cmp(b)
+            } else {
+                len_cmp
+            }
+        });
         for word in &possible_word_vec {
             println!("{} {}", word, word.len());
         }

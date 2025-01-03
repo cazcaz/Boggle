@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use boggle::{BoggleGame, BoggleSolverInterface};
 use clap::Parser;
 
@@ -35,6 +37,7 @@ fn main() {
         );
         game.start();
     } else {
+        let start = Instant::now();
         let solver = BoggleSolverInterface::new(
             args.board,
             args.size,
@@ -42,6 +45,12 @@ fn main() {
             args.dictionary,
             args.multi_thread,
         );
+        let duration = start.elapsed();
         solver.output_words();
+
+        println!(
+            "Time taken: {} seconds",
+            (duration.as_nanos() as f64) / 1e9 as f64
+        );
     }
 }
